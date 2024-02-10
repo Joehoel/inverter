@@ -37,11 +37,14 @@ async function invert(fileKey: string) {
 
   const response = await lambda.send(cmd);
   const payload = JSON.parse(new TextDecoder().decode(response.Payload));
+
   const { key } = z
     .object({
       key: z.string(),
     })
     .parse(payload);
+
+  console.log({ key });
 
   const url = await getSignedUrl(
     s3,
@@ -62,8 +65,8 @@ export async function action({ request }: ActionFunctionArgs) {
   );
 
   const fileName = String(formData.get("upload"));
-  const key = fileName.split(".")[0];
-  const url = await invert(key);
+  // const key = fileName.split(".")[0];
+  const url = await invert(fileName);
 
   return json({
     url,

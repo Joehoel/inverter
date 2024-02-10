@@ -4,11 +4,11 @@ import type { UploadHandler } from "@remix-run/node";
 import { Bucket } from "sst/node/bucket";
 import { s3 } from "./lib/s3";
 
-const uploadStreamToS3 = async (
+async function uploadStreamToS3(
   data: AsyncIterable<Uint8Array>,
   key: string,
   contentType: string
-) => {
+) {
   const params: PutObjectCommandInput = {
     Bucket: Bucket.Uploads.bucketName,
     Key: key,
@@ -18,8 +18,12 @@ const uploadStreamToS3 = async (
 
   await s3.send(new PutObjectCommand(params));
 
+  console.log(
+    `Uploaded ${key} to ${Bucket.Uploads.bucketName} with content type ${contentType}`
+  );
+
   return key;
-};
+}
 
 // The UploadHandler gives us an AsyncIterable<Uint8Array>, so we need to convert that to something the aws-sdk can use.
 // Here, we are going to convert that to a buffer to be consumed by the aws-sdk.
