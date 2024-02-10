@@ -13,5 +13,12 @@ Thats why I initially created a version of this application in `Streamlit`. This
   - Cron (not yet)
 - Remix
 
+## TODO
+
+- [ ] Add CI/CD
+- [ ] Improve frontend UI.
+- [ ] Create Raycast extension
+
 ---
+
 Made with ❤️ by Joël Kuijper
