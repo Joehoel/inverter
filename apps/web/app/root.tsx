@@ -3,7 +3,12 @@ import "@mantine/notifications/styles.css";
 import "@mantine/nprogress/styles.css";
 import "@mantine/dropzone/styles.css";
 
-import { ColorSchemeScript, MantineProvider } from "@mantine/core";
+import {
+  ColorSchemeScript,
+  MantineProvider,
+  AppShell,
+  Burger,
+} from "@mantine/core";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import { cssBundleHref } from "@remix-run/css-bundle";
 import type { LinksFunction } from "@remix-run/node";
@@ -20,6 +25,7 @@ import {
 } from "@remix-run/react";
 import { useEffect } from "react";
 import { NotFound } from "./components/not-found";
+import { Navbar } from "./components/navbar";
 
 export const links: LinksFunction = () => [
   ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
@@ -53,7 +59,14 @@ export default function App() {
       <body>
         <MantineProvider>
           <NavigationProgress />
-          <Outlet />
+          <AppShell>
+            <AppShell.Navbar>
+              <Navbar />
+            </AppShell.Navbar>
+            <AppShell.Main>
+              <Outlet />
+            </AppShell.Main>
+          </AppShell>
           <ScrollRestoration />
           <Scripts />
           <LiveReload />

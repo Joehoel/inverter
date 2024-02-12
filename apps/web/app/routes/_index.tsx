@@ -1,20 +1,39 @@
-import { z } from "zod";
 import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { Group, Text, rem } from "@mantine/core";
-import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
+import {
+  Button,
+  Code,
+  Container,
+  Flex,
+  Group,
+  List,
+  Progress,
+  Text,
+  ThemeIcon,
+  Title,
+  rem,
+} from "@mantine/core";
+import { Dropzone, FileWithPath, MIME_TYPES } from "@mantine/dropzone";
 import {
   ActionFunctionArgs,
   json,
   unstable_parseMultipartFormData,
   type MetaFunction,
 } from "@remix-run/node";
-import { Form, useActionData } from "@remix-run/react";
-import { IconPhoto, IconUpload, IconX } from "@tabler/icons-react";
+import { useFetcher } from "@remix-run/react";
+import {
+  IconDownload,
+  IconFile,
+  IconPhoto,
+  IconUpload,
+  IconX,
+} from "@tabler/icons-react";
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { Bucket } from "sst/node/bucket";
 import { Function } from "sst/node/function";
-import { Button } from "~/components/ui/button";
+import { z } from "zod";
 import { s3 } from "~/lib/s3";
 import { s3UploaderHandler } from "~/upload-handler.server";
 
@@ -74,73 +93,151 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Index() {
-  const data = useActionData<typeof action>();
+  const fetcher = useFetcher<typeof action>();
+  const isLoading = fetcher.state !== "idle";
+  const url = fetcher.data?.url;
+  const [files, setFiles] = useState<FileWithPath[]>([]);
 
   return (
-    <Form method="POST" encType="multipart/form-data">
-      <Dropzone
-        onDrop={(files) => {
-          console.log({ files });
-        }}
-        onReject={(files) => console.log("rejected files", files)}
-        maxSize={5 * 1024 ** 2}
-        accept={[MIME_TYPES.pptx]}
-        name="upload"
-      >
-        <Group
-          justify="center"
-          gap="xl"
-          mih={220}
-          style={{ pointerEvents: "none" }}
-        >
-          <Dropzone.Accept>
-            <IconUpload
-              style={{
-                width: rem(52),
-                height: rem(52),
-                color: "var(--mantine-color-blue-6)",
-              }}
-              stroke={1.5}
-            />
-          </Dropzone.Accept>
-          <Dropzone.Reject>
-            <IconX
-              style={{
-                width: rem(52),
-                height: rem(52),
-                color: "var(--mantine-color-red-6)",
-              }}
-              stroke={1.5}
-            />
-          </Dropzone.Reject>
-          <Dropzone.Idle>
-            <IconPhoto
-              style={{
-                width: rem(52),
-                height: rem(52),
-                color: "var(--mantine-color-dimmed)",
-              }}
-              stroke={1.5}
-            />
-          </Dropzone.Idle>
+    <div>
+      <Title>Inverted!</Title>
 
-          <div>
-            <Text size="xl" inline>
-              Drag images here or click to select files
-            </Text>
-            <Text size="sm" c="dimmed" inline mt={7}>
-              Attach as many files as you like, each file should not exceed 5mb
-            </Text>
-          </div>
-        </Group>
-      </Dropzone>
-      <Button type="submit">Submit</Button>
-      {data && data.url && (
-        // Download link
-        <a href={data.url} download>
-          Download
-        </a>
-      )}
-    </Form>
+      <Container>
+        <fetcher.Form method="POST" encType="multipart/form-data">
+          <Dropzone
+            loading={isLoading}
+            onDrop={setFiles}
+            onReject={(files) => console.log("rejected files", files)}
+            maxSize={5 * 1024 ** 2}
+            accept={[MIME_TYPES.pptx]}
+            name="upload"
+            multiple={false}
+          >
+            <Group
+              justify="center"
+              gap="xl"
+              mih={220}
+              style={{ pointerEvents: "none" }}
+            >
+              <Dropzone.Accept>
+                <IconUpload
+                  style={{
+                    width: rem(52),
+                    height: rem(52),
+                    color: "var(--mantine-color-blue-6)",
+                  }}
+                  stroke={1.5}
+                />
+              </Dropzone.Accept>
+              <Dropzone.Reject>
+                <IconX
+                  style={{
+                    width: rem(52),
+                    height: rem(52),
+                    color: "var(--mantine-color-red-6)",
+                  }}
+                  stroke={1.5}
+                />
+              </Dropzone.Reject>
+              <Dropzone.Idle>
+                <IconPhoto
+                  style={{
+                    width: rem(52),
+                    height: rem(52),
+                    color: "var(--mantine-color-dimmed)",
+                  }}
+                  stroke={1.5}
+                />
+              </Dropzone.Idle>
+
+              <div>
+                <Text size="xl" inline>
+                  Drag images here or click to select files
+                </Text>
+                <Text size="sm" c="dimmed" inline mt={7}>
+                  Attach as many files as you like, each file should not exceed
+                  5mb
+                </Text>
+              </div>
+            </Group>
+          </Dropzone>
+          <Progress value={50} styles={{ root: { marginBlock: 20 } }} />
+
+          <FileList files={files} />
+
+          <Button disabled={isLoading} type="submit">
+            Invert
+          </Button>
+          {url && (
+            // Download link
+            <Button
+              component="a"
+              disabled={isLoading || !url}
+              href={url}
+              rightSection={<IconDownload size={14} />}
+            >
+              Download
+            </Button>
+          )}
+        </fetcher.Form>
+      </Container>
+    </div>
   );
 }
+
+function FileList({ files }: { files: FileWithPath[] }) {
+  if (files.length === 0) {
+    return null;
+  }
+
+  return (
+    <MotionList
+      initial="hidden"
+      animate="visible"
+      variants={{
+        visible: {
+          opacity: 1,
+          transition: {
+            when: "beforeChildren", // Animate the parent first
+            staggerChildren: 0.1,
+          },
+        },
+        hidden: {
+          opacity: 0,
+        },
+      }}
+      spacing={"xs"}
+      size="md"
+    >
+      {files.map((file) => (
+        <MotionListItem
+          key={file.path}
+          variants={{
+            visible: {
+              opacity: 1,
+              x: 0,
+            },
+            hidden: { opacity: 0, x: -50 },
+          }}
+          icon={
+            <ThemeIcon size={24} radius="xl">
+              <IconFile style={{ width: rem(16), height: rem(16) }} />
+            </ThemeIcon>
+          }
+          // You can also add custom transition per item if needed
+          transition={{ duration: 0.15 }}
+        >
+          <Flex direction={"row"} align={"center"} content="space-between">
+            <Text>{file.path}</Text>
+            <Text>
+              <Code>{file.size}</Code>
+            </Text>
+          </Flex>
+        </MotionListItem>
+      ))}
+    </MotionList>
+  );
+}
+
+const MotionList = motion(List);
+const MotionListItem = motion(List.Item);

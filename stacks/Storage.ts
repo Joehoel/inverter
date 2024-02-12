@@ -1,7 +1,17 @@
-import { Bucket, Cron, StackContext } from "sst/constructs";
+import { Bucket, Cron, Queue, StackContext, use } from "sst/constructs";
+import { API } from "./API";
 
 export function Storage({ stack }: StackContext) {
-  const bucket = new Bucket(stack, "Uploads");
+  const queue = new Queue(stack, "queue");
+
+  const bucket = new Bucket(stack, "Uploads", {
+    notifications: {
+      process: {
+        type: "queue",
+        queue,
+      },
+    },
+  });
 
   new Cron(stack, "cron", {
     schedule: "rate(1 day)",

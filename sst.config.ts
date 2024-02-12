@@ -7,7 +7,7 @@ export default {
   config(_input) {
     return {
       name: "inverter",
-      region: "us-east-1",
+      region: "eu-west-1",
     };
   },
   stacks(app) {
