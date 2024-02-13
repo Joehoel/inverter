@@ -13,12 +13,12 @@ export function API({ stack }: StackContext) {
   });
 
   const fn = new Function(stack, "inverter", {
-    handler: "packages/functions/src/inverting/handler.handler",
-    python: { installCommands: ["pip install -r requirements.txt"] },
+    handler: "packages/functions/src/inverting",
+    description: "Lambda function for inverting PowerPoints",
     environment: {
       BUCKET: bucket.bucketName,
     },
-    runtime: "python3.11",
+    runtime: "container",
     initialPolicy: [
       new PolicyStatement({
         actions: ["s3:GetObject", "s3:PutObject"],

@@ -3,13 +3,19 @@ import os
 from pptx import Presentation
 from io import BytesIO
 import boto3
-from aws_lambda_powertools.utilities.parser import BaseModel, event_parser
+from aws_lambda_powertools.utilities.parser import (
+    BaseModel,
+    ValidationError,
+)
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from PIL import Image, ImageOps
+from aws_lambda_powertools import Logger
 
 BUCKET = os.environ["BUCKET"]
+
+logger = Logger()
 s3 = boto3.client("s3")
 
 
@@ -17,9 +23,9 @@ class InvertRequest(BaseModel):
     file_key: str
 
 
-@event_parser(model=InvertRequest)
-def handler(event: InvertRequest, context: LambdaContext):
+def handler(event, context: LambdaContext):
     try:
+        event = InvertRequest.model_validate_json(event)
         response = s3.get_object(Bucket=BUCKET, Key=event.file_key)
         body = response["Body"].read()
 
@@ -74,7 +80,13 @@ def handler(event: InvertRequest, context: LambdaContext):
 
         s3.put_object(Bucket=BUCKET, Key=new_key, Body=output.getvalue())
 
+        print("Inverted file saved to: ", new_key)
+
         return {"status": "success", "key": new_key}
+    except ValidationError as e:
+        print(e)
+        return {"error": e.errors()}
+
     except Exception as e:
         print(e)
         return {"error": str(e)}

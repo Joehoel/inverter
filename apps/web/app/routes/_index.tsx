@@ -47,6 +47,8 @@ export const meta: MetaFunction = () => {
 const lambda = new LambdaClient({});
 
 async function invert(fileKey: string) {
+  console.log({ fileKey });
+
   const cmd = new InvokeCommand({
     FunctionName: Function.inverter.functionName,
     Payload: JSON.stringify({
@@ -54,22 +56,26 @@ async function invert(fileKey: string) {
     }),
   });
 
+  console.log(cmd.input);
+
   const response = await lambda.send(cmd);
   const payload = JSON.parse(new TextDecoder().decode(response.Payload));
 
-  const { key } = z
+  const result = z
     .object({
       key: z.string(),
     })
-    .parse(payload);
+    .safeParse(payload);
 
-  console.log({ key });
+  if (!result.success) {
+    throw new Error("Failed to invert");
+  }
 
   const url = await getSignedUrl(
     s3,
     new GetObjectCommand({
       Bucket: Bucket.Uploads.bucketName,
-      Key: key,
+      Key: result.data.key,
     }),
     { expiresIn: 15 * 60 }
   );
