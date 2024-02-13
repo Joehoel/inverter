@@ -51,12 +51,12 @@ async function invert(fileKey: string) {
 
   const cmd = new InvokeCommand({
     FunctionName: Function.inverter.functionName,
-    Payload: JSON.stringify({
-      file_key: fileKey,
-    }),
+    Payload: Buffer.from(
+      JSON.stringify({
+        file_key: fileKey,
+      })
+    ),
   });
-
-  console.log(cmd.input);
 
   const response = await lambda.send(cmd);
   const payload = JSON.parse(new TextDecoder().decode(response.Payload));
@@ -65,17 +65,13 @@ async function invert(fileKey: string) {
     .object({
       key: z.string(),
     })
-    .safeParse(payload);
-
-  if (!result.success) {
-    throw new Error("Failed to invert");
-  }
+    .parse(payload);
 
   const url = await getSignedUrl(
     s3,
     new GetObjectCommand({
       Bucket: Bucket.Uploads.bucketName,
-      Key: result.data.key,
+      Key: result.key,
     }),
     { expiresIn: 15 * 60 }
   );
@@ -91,7 +87,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
   const fileName = String(formData.get("upload"));
   // const key = fileName.split(".")[0];
-  const url = await invert(fileName);
+  const url = await invert(fileName).catch(() => {
+    console.error("Failed to invert file", fileName);
+    return null;
+  });
 
   return json({
     url,

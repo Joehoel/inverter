@@ -1,12 +1,15 @@
 import os
-
+import json
 from pptx import Presentation
 from io import BytesIO
 import boto3
 from aws_lambda_powertools.utilities.parser import (
     BaseModel,
     ValidationError,
+    event_parser,
+    parse,
 )
+from aws_lambda_powertools.utilities.parser.models import APIGatewayProxyEventV2Model
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE_TYPE
@@ -25,7 +28,8 @@ class InvertRequest(BaseModel):
 
 def handler(event, context: LambdaContext):
     try:
-        event = InvertRequest.model_validate_json(event)
+        event = parse(event=json.loads(event.decode("utf-8")), model=InvertRequest)
+
         response = s3.get_object(Bucket=BUCKET, Key=event.file_key)
         body = response["Body"].read()
 
