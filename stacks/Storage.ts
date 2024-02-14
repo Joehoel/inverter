@@ -1,5 +1,4 @@
-import { Bucket, Cron, Queue, StackContext, use } from "sst/constructs";
-import { API } from "./API";
+import { Bucket, Cron, Queue, StackContext } from "sst/constructs";
 
 export function Storage({ stack }: StackContext) {
   const queue = new Queue(stack, "queue");

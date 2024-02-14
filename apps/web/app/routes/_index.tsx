@@ -8,7 +8,6 @@ import {
   Flex,
   Group,
   List,
-  Progress,
   Text,
   ThemeIcon,
   Title,
@@ -30,7 +29,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Bucket } from "sst/node/bucket";
 import { Function } from "sst/node/function";
 import { z } from "zod";
@@ -47,18 +46,17 @@ export const meta: MetaFunction = () => {
 const lambda = new LambdaClient({});
 
 async function invert(fileKey: string) {
-  console.log({ fileKey });
+  const response = await lambda.send(
+    new InvokeCommand({
+      FunctionName: Function.inverter.functionName,
+      Payload: Buffer.from(
+        JSON.stringify({
+          file_key: fileKey,
+        }),
+      ),
+    }),
+  );
 
-  const cmd = new InvokeCommand({
-    FunctionName: Function.inverter.functionName,
-    Payload: Buffer.from(
-      JSON.stringify({
-        file_key: fileKey,
-      })
-    ),
-  });
-
-  const response = await lambda.send(cmd);
   const payload = JSON.parse(new TextDecoder().decode(response.Payload));
 
   const result = z
@@ -73,7 +71,7 @@ async function invert(fileKey: string) {
       Bucket: Bucket.Uploads.bucketName,
       Key: result.key,
     }),
-    { expiresIn: 15 * 60 }
+    { expiresIn: 15 * 60 },
   );
 
   return url;
@@ -82,10 +80,13 @@ async function invert(fileKey: string) {
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await unstable_parseMultipartFormData(
     request,
-    s3UploaderHandler
+    s3UploaderHandler,
   );
 
   const fileName = String(formData.get("upload"));
+
+  console.log("FILE_NAME", fileName);
+
   // const key = fileName.split(".")[0];
   const url = await invert(fileName).catch(() => {
     console.error("Failed to invert file", fileName);
@@ -110,9 +111,8 @@ export default function Index() {
       <Container>
         <fetcher.Form method="POST" encType="multipart/form-data">
           <Dropzone
-            loading={isLoading}
+            disabled={isLoading}
             onDrop={setFiles}
-            onReject={(files) => console.log("rejected files", files)}
             maxSize={5 * 1024 ** 2}
             accept={[MIME_TYPES.pptx]}
             name="upload"
@@ -166,7 +166,7 @@ export default function Index() {
               </div>
             </Group>
           </Dropzone>
-          <Progress value={50} styles={{ root: { marginBlock: 20 } }} />
+          {/* <Progress value={50} styles={{ root: { marginBlock: 20 } }} /> */}
 
           <FileList files={files} />
 

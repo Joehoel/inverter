@@ -1,4 +1,3 @@
-import type { PutObjectCommandInput } from "@aws-sdk/client-s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import type { UploadHandler } from "@remix-run/node";
 import { Bucket } from "sst/node/bucket";
@@ -7,19 +6,19 @@ import { s3 } from "./lib/s3";
 async function uploadStreamToS3(
   data: AsyncIterable<Uint8Array>,
   key: string,
-  contentType: string
+  contentType: string,
 ) {
-  const params: PutObjectCommandInput = {
-    Bucket: Bucket.Uploads.bucketName,
-    Key: key,
-    Body: await convertToBuffer(data),
-    ContentType: contentType,
-  };
-
-  await s3.send(new PutObjectCommand(params));
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: Bucket.Uploads.bucketName,
+      Key: key,
+      Body: await convertToBuffer(data),
+      ContentType: contentType,
+    }),
+  );
 
   console.log(
-    `Uploaded ${key} to ${Bucket.Uploads.bucketName} with content type ${contentType}`
+    `Uploaded ${key} to ${Bucket.Uploads.bucketName} with content type ${contentType}`,
   );
 
   return key;

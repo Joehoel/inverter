@@ -26,10 +26,11 @@ class InvertRequest(BaseModel):
     file_key: str
 
 
-def handler(event, context: LambdaContext):
+@event_parser(model=InvertRequest)
+def handler(event: InvertRequest, context: LambdaContext):
     try:
-        event = parse(event=json.loads(event.decode("utf-8")), model=InvertRequest)
-
+        print(event)
+        # event = parse(event=json.loads(event.decode("utf-8")), model=InvertRequest)
         response = s3.get_object(Bucket=BUCKET, Key=event.file_key)
         body = response["Body"].read()
 

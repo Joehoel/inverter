@@ -3,11 +3,11 @@ import { API } from "./API";
 import { Storage } from "./Storage";
 
 export function Web({ stack }: StackContext) {
-  const { api, fn } = use(API);
+  const { fn } = use(API);
   const { bucket } = use(Storage);
 
   const web = new RemixSite(stack, "web", {
-    bind: [bucket, fn, api],
+    bind: [bucket, fn],
     buildCommand: "pnpm run build",
     path: "apps/web",
   });

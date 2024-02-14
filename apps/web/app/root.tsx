@@ -3,12 +3,7 @@ import "@mantine/notifications/styles.css";
 import "@mantine/nprogress/styles.css";
 import "@mantine/dropzone/styles.css";
 
-import {
-  ColorSchemeScript,
-  MantineProvider,
-  AppShell,
-  Burger,
-} from "@mantine/core";
+import { ColorSchemeScript, MantineProvider, AppShell } from "@mantine/core";
 import { NavigationProgress, nprogress } from "@mantine/nprogress";
 import { cssBundleHref } from "@remix-run/css-bundle";
 import type { LinksFunction } from "@remix-run/node";
