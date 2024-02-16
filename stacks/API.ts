@@ -1,4 +1,4 @@
-import { Function, StackContext, use } from "sst/constructs";
+import { Function, Job, StackContext, use } from "sst/constructs";
 
 import { Storage } from "./Storage";
 

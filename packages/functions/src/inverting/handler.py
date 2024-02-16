@@ -1,10 +1,11 @@
+from typing import List
 import os
 import json
 from pptx import Presentation
 from io import BytesIO
 import boto3
+from pydantic import BaseModel
 from aws_lambda_powertools.utilities.parser import (
-    BaseModel,
     ValidationError,
     event_parser,
     parse,
@@ -12,6 +13,7 @@ from aws_lambda_powertools.utilities.parser import (
 from aws_lambda_powertools.utilities.parser.models import APIGatewayProxyEventV2Model
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from pptx.dml.color import RGBColor
+from zipfile import ZipFile, ZIP_DEFLATED
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from PIL import Image, ImageOps
 from aws_lambda_powertools import Logger
@@ -23,71 +25,83 @@ s3 = boto3.client("s3")
 
 
 class InvertRequest(BaseModel):
-    file_key: str
+    file_keys: List[str]
 
 
-@event_parser(model=InvertRequest)
-def handler(event: InvertRequest, context: LambdaContext):
+# @event_parser(model=InvertRequest)
+def handler(event, context: LambdaContext):
     try:
-        print(event)
-        # event = parse(event=json.loads(event.decode("utf-8")), model=InvertRequest)
-        response = s3.get_object(Bucket=BUCKET, Key=event.file_key)
-        body = response["Body"].read()
+        # Check if event is bytes
+        if isinstance(event, bytes):
+            # Decode bytes string and convert to dictionary
+            event = json.loads(event.decode("utf-8"))
 
-        presentation = Presentation(BytesIO(body))
+        # Parse dictionary to Pydantic model
+        invert_request = InvertRequest(**event)
+        zip_buffer = BytesIO()
+        with ZipFile(zip_buffer, "a", ZIP_DEFLATED, False) as zip_file:
+            for file_key in invert_request.file_keys:
+                # event = parse(event=json.loads(event.decode("utf-8")), model=InvertRequest)
+                response = s3.get_object(Bucket=BUCKET, Key=file_key)
+                body = response["Body"].read()
 
-        for slide in presentation.slides:
-            # Invert slide background to black
-            background = slide.background
-            fill = background.fill
-            fill.solid()
-            fill.fore_color.rgb = RGBColor(0, 0, 0)
+                presentation = Presentation(BytesIO(body))
 
-            # Invert text color to white for all shapes that contain text
-            for shape in slide.shapes:
-                if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
-                    # Extract the image from the shape
-                    image_stream = BytesIO(shape.image.blob)
-                    with Image.open(image_stream) as img:
-                        # If image format is not supported convert it first
-                        if img.mode not in ("RGB", "RGBA"):
-                            img = img.convert("RGB")
+                for slide in presentation.slides:
+                    # Invert slide background to black
+                    background = slide.background
+                    fill = background.fill
+                    fill.solid()
+                    fill.fore_color.rgb = RGBColor(0, 0, 0)
 
-                        # Invert the image color using Pillow only if supported
-                        inverted_img = ImageOps.invert(img)
+                    # Invert text color to white for all shapes that contain text
+                    for shape in slide.shapes:
+                        if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                            # Extract the image from the shape
+                            image_stream = BytesIO(shape.image.blob)
+                            with Image.open(image_stream) as img:
+                                # If image format is not supported convert it first
+                                if img.mode not in ("RGB", "RGBA"):
+                                    img = img.convert("RGB")
 
-                        # Save the inverted image to a stream
-                        img_stream = BytesIO()
-                        inverted_img.save(img_stream, format="PNG")
-                        img_stream.seek(0)
+                                # Invert the image color using Pillow only if supported
+                                inverted_img = ImageOps.invert(img)
 
-                        # Remove the original picture
-                        left = shape.left
-                        top = shape.top
-                        width = shape.width
-                        height = shape.height
-                        slide.shapes._spTree.remove(shape._element)
+                                # Save the inverted image to a stream
+                                img_stream = BytesIO()
+                                inverted_img.save(img_stream, format="PNG")
+                                img_stream.seek(0)
 
-                        # Add the new inverted image to the slide
-                        slide.shapes.add_picture(img_stream, left, top, width, height)
+                                # Remove the original picture
+                                left = shape.left
+                                top = shape.top
+                                width = shape.width
+                                height = shape.height
+                                slide.shapes._spTree.remove(shape._element)
 
-                if not shape.has_text_frame:
-                    continue
+                                # Add the new inverted image to the slide
+                                slide.shapes.add_picture(
+                                    img_stream, left, top, width, height
+                                )
 
-                for paragraph in shape.text_frame.paragraphs:
-                    for run in paragraph.runs:
-                        run.font.color.rgb = RGBColor(255, 255, 255)
+                        if not shape.has_text_frame:
+                            continue
 
-        output = BytesIO()
-        presentation.save(output)
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                run.font.color.rgb = RGBColor(255, 255, 255)
 
-        new_key = "inverted_" + event.file_key
+                output = BytesIO()
+                presentation.save(output)
+                output.seek(0)
+                new_key = "inverted/" + file_key
+                zip_file.writestr(new_key, output.getvalue())
 
-        s3.put_object(Bucket=BUCKET, Key=new_key, Body=output.getvalue())
-
-        print("Inverted file saved to: ", new_key)
-
-        return {"status": "success", "key": new_key}
+        zip_buffer.seek(0)
+        key = "inverted.zip"
+        s3.put_object(Bucket=BUCKET, Key=key, Body=zip_buffer.getvalue())
+        print(f"Uploaded inverted folder to {key}")
+        return {"status": "success", "key": key}
     except ValidationError as e:
         print(e)
         return {"error": e.errors()}

@@ -1,13 +1,14 @@
 import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
+  Box,
   Button,
   Code,
   Container,
   Flex,
   Group,
   List,
+  Progress,
   Text,
   ThemeIcon,
   Title,
@@ -25,6 +26,7 @@ import {
   IconDownload,
   IconFile,
   IconPhoto,
+  IconSlideshow,
   IconUpload,
   IconX,
 } from "@tabler/icons-react";
@@ -32,9 +34,9 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Bucket } from "sst/node/bucket";
 import { Function } from "sst/node/function";
-import { z } from "zod";
 import { s3 } from "~/lib/s3";
 import { s3UploaderHandler } from "~/upload-handler.server";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const meta: MetaFunction = () => {
   return [
@@ -45,33 +47,26 @@ export const meta: MetaFunction = () => {
 
 const lambda = new LambdaClient({});
 
-async function invert(fileKey: string) {
+async function invert(files: string[]) {
   const response = await lambda.send(
     new InvokeCommand({
       FunctionName: Function.inverter.functionName,
-      Payload: Buffer.from(
-        JSON.stringify({
-          file_key: fileKey,
-        }),
-      ),
-    }),
+      Payload: JSON.stringify({
+        file_keys: files,
+      }),
+    })
   );
 
   const payload = JSON.parse(new TextDecoder().decode(response.Payload));
-
-  const result = z
-    .object({
-      key: z.string(),
-    })
-    .parse(payload);
-
+  console.log({ payload });
+  const fileKey = payload.key;
   const url = await getSignedUrl(
     s3,
     new GetObjectCommand({
       Bucket: Bucket.Uploads.bucketName,
-      Key: result.key,
+      Key: fileKey,
     }),
-    { expiresIn: 15 * 60 },
+    { expiresIn: 15 * 60 }
   );
 
   return url;
@@ -80,28 +75,20 @@ async function invert(fileKey: string) {
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await unstable_parseMultipartFormData(
     request,
-    s3UploaderHandler,
+    s3UploaderHandler
   );
 
-  const fileName = String(formData.get("upload"));
-
-  console.log("FILE_NAME", fileName);
-
-  // const key = fileName.split(".")[0];
-  const url = await invert(fileName).catch(() => {
-    console.error("Failed to invert file", fileName);
-    return null;
-  });
+  const files = formData.getAll("upload").map((file) => file.toString());
+  const url = await invert(files);
 
   return json({
-    url,
+    url: url,
   });
 }
 
 export default function Index() {
   const fetcher = useFetcher<typeof action>();
   const isLoading = fetcher.state !== "idle";
-  const url = fetcher.data?.url;
   const [files, setFiles] = useState<FileWithPath[]>([]);
 
   return (
@@ -111,12 +98,11 @@ export default function Index() {
       <Container>
         <fetcher.Form method="POST" encType="multipart/form-data">
           <Dropzone
-            disabled={isLoading}
             onDrop={setFiles}
+            onReject={(files) => console.log("rejected files", files)}
             maxSize={5 * 1024 ** 2}
             accept={[MIME_TYPES.pptx]}
             name="upload"
-            multiple={false}
           >
             <Group
               justify="center"
@@ -145,7 +131,7 @@ export default function Index() {
                 />
               </Dropzone.Reject>
               <Dropzone.Idle>
-                <IconPhoto
+                <IconSlideshow
                   style={{
                     width: rem(52),
                     height: rem(52),
@@ -157,7 +143,7 @@ export default function Index() {
 
               <div>
                 <Text size="xl" inline>
-                  Drag images here or click to select files
+                  Drag PowerPoint files here to invert
                 </Text>
                 <Text size="sm" c="dimmed" inline mt={7}>
                   Attach as many files as you like, each file should not exceed
@@ -166,22 +152,22 @@ export default function Index() {
               </div>
             </Group>
           </Dropzone>
-          {/* <Progress value={50} styles={{ root: { marginBlock: 20 } }} /> */}
-
-          <FileList files={files} />
-
-          <Button disabled={isLoading} type="submit">
-            Invert
-          </Button>
-          {url && (
+          <Box my="sm">
+            <FileList files={files} />
+          </Box>
+          {fetcher.data?.url ? (
             // Download link
             <Button
               component="a"
-              disabled={isLoading || !url}
-              href={url}
+              disabled={isLoading || !fetcher.data?.url}
+              href={fetcher.data?.url}
               rightSection={<IconDownload size={14} />}
             >
               Download
+            </Button>
+          ) : (
+            <Button disabled={isLoading} type="submit">
+              Invert
             </Button>
           )}
         </fetcher.Form>
