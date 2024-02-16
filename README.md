@@ -1,26 +1,36 @@
-# Inverter
+# Welcome to Remix + Vite!
 
-The goal of this project is to have an easy way to invert PowerPoints with Images from black on white to white on black. I could't find an easy way to this other than in Python with `python-pptx` and `pillow`
-Thats why I initially created a version of this application in `Streamlit`. This was very easy to make but it does not allow for much control / customization. In the future I want to add a Raycast extension for this and maybe more things that can interface with my API.
+📖 See the [Remix docs](https://remix.run/docs) and the [Remix Vite docs](https://remix.run/docs/en/main/future/vite) for details on supported features.
 
-Previous application: https://powerpoint-inverter.streamlit.app/
+## Development
 
-## Stack
+Run the Vite dev server:
 
-- SST
-  - Lambda
-    - Python
-  - API Gateway
-  - S3
-  - Cron (not yet)
-- Remix
+```shellscript
+npm run dev
+```
 
-## TODO
+## Deployment
 
-- [ ] Add CI/CD
-- [ ] Improve frontend UI.
-- [ ] Create Raycast extension
+First, build your app for production:
 
----
+```sh
+npm run build
+```
 
-Made with ❤️ by Joël Kuijper
+Then run the app in production mode:
+
+```sh
+npm start
+```
+
+Now you'll need to pick a host to deploy it to.
+
+### DIY
+
+If you're familiar with deploying Node applications, the built-in Remix app server is production-ready.
+
+Make sure to deploy the output of `npm run build`
+
+- `build/server`
+- `build/client`
