@@ -5,12 +5,16 @@ description = "Add your description here"
 authors = [
     { name = "Joël Kuijper", email = "jmkuijper@outlook.com" }
 ]
-dependencies = []
+dependencies = [
+    "python_pptx>=1.0.2",
+    "pillow>=10.4.0",
+    "tqdm>=4.66.6",
+]
 readme = "README.md"
 requires-python = ">= 3.8"
 
 [project.scripts]
-hello = "inverter_cli:hello"
+main = "inverter_cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -18,7 +22,9 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = []
+dev-dependencies = [
+    "types-tqdm>=4.66.0.20240417",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
