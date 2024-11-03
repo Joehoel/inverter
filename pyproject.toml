@@ -1,7 +1,7 @@
 [project]
 name = "inverter-cli"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "CLI to invert colors in a PowerPoint presentation"
 authors = [
     { name = "Joël Kuijper", email = "jmkuijper@outlook.com" }
 ]
@@ -9,25 +9,12 @@ dependencies = [
     "python_pptx>=1.0.2",
     "pillow>=10.4.0",
     "tqdm>=4.66.6",
+    "rich>=13.9.4",
 ]
-readme = "README.md"
 requires-python = ">= 3.8"
 
-[project.scripts]
-main = "inverter_cli:main"
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.rye]
-managed = true
-dev-dependencies = [
+[dependency-groups]
+dev = [
+    "ruff>=0.7.2",
     "types-tqdm>=4.66.0.20240417",
 ]
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/inverter_cli"]
